@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:spring="http://www.springframework.org/schema/beans"
+      xmlns:client="http://www.mulesoft.org/schema/mule/client"
+      xmlns:jdbc="http://www.mulesoft.org/schema/mule/jdbc"
+      xmlns:sqs="http://www.mulesoft.org/schema/mule/sqs"
+      xmlns:mule-xml="http://www.mulesoft.org/schema/mule/xml"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/3.2/mule.xsd
+        http://www.mulesoft.org/schema/mule/client http://www.mulesoft.org/schema/mule/client/3.2/mule-client.xsd
+        http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/3.2/mule-xml.xsd
+            http://www.mulesoft.org/schema/mule/jdbc http://www.mulesoft.org/schema/mule/jdbc/3.2/mule-jdbc.xsd
+        http://www.mulesoft.org/schema/mule/sqs http://www.mulesoft.org/schema/mule/sqs/1.0.0-SNAPSHOT/mule-sqs.xsd
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+
+    <description>
+        Listens to an AWS SQS queue and inserts messages into a DB.
+    </description>
+
+    <jdbc:postgresql-data-source url="jdbc:postgresql://localhost:5432/hazard" user="hazard"
+                                 password="test" name="datasource_pg"></jdbc:postgresql-data-source>
+
+    <jdbc:endpoint name="insert-point" connector-ref="postgres-qrt" queryKey="insert-point">
+        <jdbc:transaction action="ALWAYS_BEGIN"/>
+    </jdbc:endpoint>
+
+    <jdbc:connector dataSource-ref="datasource_pg" name="postgres-qrt" >
+        <jdbc:query key="insert-point"
+                    value="
+               INSERT INTO qrt.testpoint(latitude, longitude)
+        VALUES(
+        cast(#[jxpath:/point/latitude] as float),
+        cast(#[jxpath:/point/longitude] as float)
+        );"/>
+
+    </jdbc:connector>
+
+    <sqs:config endPoint="${aws.qsq.endpoint}"
+                accessKeyId="${aws.sqs.id}" secretAccessKey="${aws.sqs.secret}"
+                queueName="${aws.queue.name}"/>
+
+    <flow name="main">
+        <sqs:receive-messages numberOfMessages="10"/>
+
+        <logger level="INFO" message="#[jxpath:/point/longitude] #[jxpath:/point/latitude]"/>
+
+        <jdbc:outbound-endpoint ref="insert-point"/>
+    </flow>
+</mule>
