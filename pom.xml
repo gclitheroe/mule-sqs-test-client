@@ -47,6 +47,12 @@
                 <extensions>true</extensions>
                 <configuration>
                     <copyToAppsDirectory>true</copyToAppsDirectory>
+                    <inclusions>
+                        <inclusion>
+                            <groupId>nz.org.geonet</groupId>
+                            <artifactId>sqs</artifactId>
+                        </inclusion>
+                    </inclusions>
                 </configuration>
             </plugin>
             <plugin>
